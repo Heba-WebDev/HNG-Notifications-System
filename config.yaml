@@ -17,6 +17,9 @@ redis:
 services:
   user_service_url: "http://localhost:8081"
   template_service_url: "http://localhost:8082"
+  mock_services: false
 
 auth:
   jwt_secret: "my-secret-key"
+
+mode: "standalone"

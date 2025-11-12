@@ -18,6 +18,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load config", err)
 	}
+	if cfg.MockServices {
+		log.Print("Running in MOCK MODE - external services simulated")
+	}
 
 	redisClient := redis.InitRedis(cfg.Redis)
 	clientRabbit, err := queue.NewRabbitMqService(cfg.RabbitMQ)
@@ -25,8 +28,8 @@ func main() {
 		log.Fatalf("failed to connect to rabbitMq")
 	}
 	defer clientRabbit.CloseConnection()
-	userService := services.NewUserServiceClient(cfg.Services.UserServiceURL)
-	templateService := services.NewTemplateClient(cfg.Services.TemplateServiceURL)
+	userService := services.NewUserServiceClient(cfg.Services.UserServiceURL, cfg.MockServices)
+	templateService := services.NewTemplateClient(cfg.Services.TemplateServiceURL, cfg.MockServices)
 	notificationHandler := handlers.NewNotificationService(
 		clientRabbit,
 		redisClient,

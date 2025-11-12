@@ -7,11 +7,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	RabbitMQ RabbitMQConfig
-	Redis    RedisConfig
-	Services ServicesConfig
-	Auth     AuthConfig
+	Server       ServerConfig
+	RabbitMQ     RabbitMQConfig
+	Redis        RedisConfig
+	Services     ServicesConfig
+	Auth         AuthConfig
+	MockServices bool
 }
 
 type ServerConfig struct {
@@ -50,6 +51,7 @@ func LoadConfig() (*Config, error) {
 
 	// Set defaults
 	viper.SetDefault("server.port", "8080")
+	viper.SetDefault("mock_services", false)
 	viper.SetDefault("server.timeout", "10s")
 	viper.SetDefault("rabbitmq.exchange", "notifications.direct")
 	viper.SetDefault("rabbitmq.email_queue", "email.queue")

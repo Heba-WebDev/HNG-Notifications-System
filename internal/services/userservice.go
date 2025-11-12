@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,19 +15,27 @@ type UserServiceClient struct {
 	baseURL    string
 	httpClient *http.Client
 	cb         *gobreaker.CircuitBreaker
+	mockMode   bool
 }
 
-func NewUserServiceClient(baseURL string) *UserServiceClient {
+func NewUserServiceClient(baseURL string, mockMode bool) *UserServiceClient {
 	return &UserServiceClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		cb: circuitbreaker.NewCircuitBreaker("user-service"),
+		cb:       circuitbreaker.NewCircuitBreaker("user-service"),
+		mockMode: mockMode,
 	}
 }
 
 func (u *UserServiceClient) ValidateUser(ctx context.Context, userID string) (bool, error) {
+	// for the mock mode before adding any the other services
+	if u.mockMode {
+		log.Print("Mock mode enabled: Simulating user validation")
+		return true, nil
+	}
+
 	result, err := u.cb.Execute(func() (interface{}, error) {
 		req, err := http.NewRequestWithContext(ctx, "GET",
 			fmt.Sprintf("%s/users/%s", u.baseURL, userID), nil)
