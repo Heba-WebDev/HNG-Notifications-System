@@ -21,7 +21,7 @@ async function testEmailService() {
       user: {
         id: '00000000-0000-0000-0000-000000000001',
         name: 'Test User',
-        email: 'hebanano12@gmail.com', // Change this to your test email
+        email: 'test.user@example.com', // Change this to your test email
         push_token: null,
       },
       template: {
@@ -62,7 +62,7 @@ async function testEmailService() {
       user: {
         id: '00000000-0000-0000-0000-000000000001',
         name: 'Test User',
-        email: 'hebaadel20155@gmail.com',
+        email: 'test.user2@example.com',
         push_token: null,
       },
       template: {
