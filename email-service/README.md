@@ -107,8 +107,6 @@ All microservices connect to the same instances of:
 - **PostgreSQL**: Database (each service uses its own database)
 - **Redis**: Caching and rate limiting
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed information about how services share infrastructure.
-
 ### Message Flow
 
 1. Notification service publishes message to RabbitMQ exchange
