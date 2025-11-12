@@ -53,13 +53,15 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD:-password}
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-password}
     volumes:
       - redis_data:/data
     networks:
       - notification-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-password}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
