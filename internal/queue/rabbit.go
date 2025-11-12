@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/franzego/stage04/internal/config"
@@ -18,21 +17,23 @@ type RabbitMqClient struct {
 	Connected bool
 }
 
-func NewRabbitMqService(cfg config.RabbitMQConfig) *RabbitMqClient {
+func NewRabbitMqService(cfg config.RabbitMQConfig) (*RabbitMqClient, error) {
 	conn, err := amqp.Dial(cfg.URL)
 	if err != nil {
-		log.Fatal("there was an error connecting to rabbitmq")
+		// log.Fatal("there was an error connecting to rabbitmq")
+		return nil, fmt.Errorf("error connecting to rabbitMQ")
 	}
 	channel, err := conn.Channel()
 	if err != nil {
-		log.Fatal("could not create a channel")
+		// log.Fatal("could not create a channel")
+		return nil, fmt.Errorf("error creating rabbitmq channel")
 	}
 	return &RabbitMqClient{
 		Conn:      conn,
 		Channel:   channel,
 		Config:    cfg,
 		Connected: true,
-	}
+	}, nil
 }
 func (r *RabbitMqClient) IsConnected() bool {
 	return r.Connected && !r.Conn.IsClosed()

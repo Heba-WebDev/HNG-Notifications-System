@@ -9,25 +9,32 @@ import (
 	"time"
 
 	"github.com/franzego/stage04/internal/models"
-	"github.com/franzego/stage04/internal/queue"
-	"github.com/franzego/stage04/internal/services"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type NotificationHandler struct {
-	rabbitClient    *queue.RabbitMqClient
+	rabbitClient    RabbitClient
 	redis           *redis.Client
-	userService     *services.UserServiceClient
-	templateService *services.TemplateServiceClient
+	userService     UserService
+	templateService TemplateService
+}
+
+// RabbitClient defines the methods used from the RabbitMq client. Using an
+// interface makes testing easier (mocks can implement this).
+type RabbitClient interface {
+	PublishEmail(ctx context.Context, message interface{}) error
+	PublishPushNot(ctx context.Context, message interface{}) error
+	IsConnected() bool
 }
 
 func NewNotificationService(
-	queue *queue.RabbitMqClient,
+	queue RabbitClient,
 	redis *redis.Client,
-	userService *services.UserServiceClient,
-	templateService *services.TemplateServiceClient,
+	userService UserService,
+	templateService TemplateService,
 ) *NotificationHandler {
 	return &NotificationHandler{
 		rabbitClient:    queue,
@@ -36,9 +43,21 @@ func NewNotificationService(
 		templateService: templateService,
 	}
 }
+
+// UserService defines the subset of methods used from the user service client.
+type UserService interface {
+	ValidateUser(ctx context.Context, userID string) (bool, error)
+}
+
+// TemplateService defines the subset of methods used from the template service client.
+type TemplateService interface {
+	ValidateTemplate(ctx context.Context, templateID string) (bool, error)
+}
+
 func (n *NotificationHandler) SendEmail(c *gin.Context) {
 	ctx := context.Background()
-	correlationID, _ := c.Get("correlation_id")
+	correlationIDVal, _ := c.Get("correlation_id")
+	correlationID, _ := correlationIDVal.(string)
 	now := time.Now()
 	// parse the req
 	var req models.SendEmailRequest
@@ -92,7 +111,7 @@ func (n *NotificationHandler) SendEmail(c *gin.Context) {
 		UserID:        req.UserID,
 		TemplateID:    req.TemplateID,
 		Timestamp:     time.Now(),
-		CorrelationID: correlationID.(string),
+		CorrelationID: correlationID,
 	}
 	if err := n.rabbitClient.PublishEmail(ctx, message); err != nil {
 		log.Printf("failed to publish email")
@@ -119,7 +138,8 @@ func (n *NotificationHandler) SendEmail(c *gin.Context) {
 }
 func (n *NotificationHandler) SendPush(c *gin.Context) {
 	ctx := context.Background()
-	correlationID, _ := c.Get("correlation_id")
+	correlationIDVal, _ := c.Get("correlation_id")
+	correlationID, _ := correlationIDVal.(string)
 	now := time.Now()
 	var req models.SendPushRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -172,7 +192,7 @@ func (n *NotificationHandler) SendPush(c *gin.Context) {
 		UserID:        req.UserID,
 		TemplateID:    req.TemplateID,
 		Timestamp:     time.Now(),
-		CorrelationID: correlationID.(string),
+		CorrelationID: correlationID,
 	}
 	if err := n.rabbitClient.PublishPushNot(ctx, message); err != nil {
 		log.Printf("failed to publish push notification")
@@ -226,4 +246,55 @@ func (n *NotificationHandler) storeNotificationStatus(ctx context.Context, notif
 
 	key := fmt.Sprintf("notification:status:%s", notificationID)
 	return n.redis.Set(ctx, key, statusJSON, 24*time.Hour).Err()
+}
+func (n *NotificationHandler) GetStatus(c *gin.Context) {
+	ctx := c.Request.Context()
+	notificationID := c.Param("id")
+
+	if notificationID == "" {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Notification ID required",
+			Message: "Invalid request",
+		})
+		return
+	}
+
+	// Get status from Redis
+	statusKey := fmt.Sprintf("notification:status:%s", notificationID)
+	statusJSON, err := n.redis.Get(ctx, statusKey).Result()
+	if err == redis.Nil {
+		c.JSON(http.StatusNotFound, models.APIResponse{
+			Success: false,
+			Error:   "Notification not found",
+			Message: "Not found",
+		})
+		return
+	}
+	if err != nil {
+		log.Print("Failed to get notification status")
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   "Failed to retrieve status",
+			Message: "Internal server error",
+		})
+		return
+	}
+
+	var status models.NotificationStatus
+	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
+		log.Print("Failed to unmarshal status")
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   "Failed to parse status",
+			Message: "Internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Status retrieved successfully",
+		Data:    status,
+	})
 }
