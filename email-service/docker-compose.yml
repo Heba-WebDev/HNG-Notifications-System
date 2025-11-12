@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # Shared Infrastructure Services
+  # These services are shared across all microservices (NestJS, Go, Python Django, etc.)
+  
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: notification-rabbitmq
+    hostname: notification-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-password}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - notification-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: notification-postgres
+    hostname: notification-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - notification-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: notification-redis
+    hostname: notification-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-password}
+    volumes:
+      - redis_data:/data
+    networks:
+      - notification-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-password}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Email Service (NestJS)
+  email-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notification-email-service
+    environment:
+      - NODE_ENV=production
+      # RabbitMQ Configuration (using service name from docker-compose)
+      - RABBITMQ_URL=amqp://${RABBITMQ_USERNAME:-admin}:${RABBITMQ_PASSWORD:-password}@rabbitmq:5672
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-password}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      # Database Configuration (using service name from docker-compose)
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-admin}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_NAME=email_service
+      # Email Configuration (REQUIRED - no defaults for security)
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM=${EMAIL_FROM:-${EMAIL_USER}}
+      - EMAIL_SERVICE=${EMAIL_SERVICE:-gmail}
+    networks:
+      - notification-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  notification-network:
+    driver: bridge
