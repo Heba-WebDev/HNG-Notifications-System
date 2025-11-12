@@ -1,0 +1,25 @@
+server:
+  port: "8080"
+  timeout: 10s
+
+rabbitmq:
+  url: "amqp://guest:guest@localhost:5672/"
+  exchange: "notifications.direct"
+  email_queue: "email.queue"
+  push_queue: "push.queue"
+  failed_queue: "failed.queue"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+services:
+  user_service_url: "http://localhost:8081"
+  template_service_url: "http://localhost:8082"
+  mock_services: false
+
+auth:
+  jwt_secret: "my-secret-key"
+
+mode: "standalone"
