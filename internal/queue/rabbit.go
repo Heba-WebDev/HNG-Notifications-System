@@ -34,9 +34,18 @@ func NewRabbitMqService(cfg config.RabbitMQConfig) *RabbitMqClient {
 		Connected: true,
 	}
 }
-func (r *RabbitMqClient) CloseConnection() {
-	r.Channel.Close()
-	r.Conn.Close()
+func (r *RabbitMqClient) IsConnected() bool {
+	return r.Connected && !r.Conn.IsClosed()
+}
+func (r *RabbitMqClient) CloseConnection() error {
+	r.Connected = false
+	if r.Channel != nil {
+		r.Channel.Close()
+	}
+	if r.Conn != nil {
+		return r.Conn.Close()
+	}
+	return nil
 
 }
 

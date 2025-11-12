@@ -35,3 +35,10 @@ type NotificationResponse struct {
 	Status         string    `json:"status"`
 	QueuedAt       time.Time `json:"queued_at"`
 }
+type NotificationStatus struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
