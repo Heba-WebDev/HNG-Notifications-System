@@ -10,7 +10,7 @@ rabbitmq:
   failed_queue: "failed.queue"
 
 redis:
-  addr: "redis://default:GpEMHuxDTvYLZLGRwPHvBvUhrxsiVvka@redis.railway.internal:6379"
+  addr: "redis://redis.railway.internal:6379"
   password: "GpEMHuxDTvYLZLGRwPHvBvUhrxsiVvka"
   db: 0
 
