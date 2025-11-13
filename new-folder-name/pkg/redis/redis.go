@@ -11,10 +11,10 @@ import (
 
 func InitRedis(cfg config.RedisConfig) *redis.Client {
 	client := redis.NewClient(&redis.Options{
-		Addr:         cfg.Addr,
-		Password:     cfg.Password,
+		Addr:         "redis.railway.internal:6379",
+		Password:     "GpEMHuxDTvYLZLGRwPHvBvUhrxsiVvka",
 		DB:           cfg.DB,
-		DialTimeout:  5 * time.Second,
+		DialTimeout:  15 * time.Second,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	})
